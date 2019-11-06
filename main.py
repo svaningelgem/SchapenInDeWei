@@ -3,9 +3,13 @@ from collections import namedtuple, defaultdict
 from math import sqrt
 from functools import lru_cache
 import os
+import pickle
 
 
-# random.seed(0)  # DEBUG: always the same results
+if os.path.exists("use_seed.dat"):
+    with open("use_seed.dat", "rb") as fp:
+        random.setstate(pickle.load(fp))
+
 Point = namedtuple("Point", ('x', 'y'))
 picture_counter = 0
 
@@ -235,8 +239,9 @@ def solve_issue(coords):
 
 
 if __name__ == "__main__":
-    print("Seed used: ", random.seed)
-
+    with open("last_seed.dat", "wb") as fp:
+        pickle.dump(random.getstate(), fp)
+    
     coords = generate_coordinates()
     fence = solve_issue(coords.copy())
     draw_result(coords, fence, "final_result.png")
