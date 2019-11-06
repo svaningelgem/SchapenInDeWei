@@ -13,12 +13,12 @@ if os.path.exists("use_seed.dat"):
 Point = namedtuple("Point", ('x', 'y'))
 picture_counter = 0
 
-################# CONFIG
+# ################ CONFIG
 min_x = 0
 max_x = 100
 min_y = 0
 max_y = 100
-########################
+# #######################
 
 
 def generate_coordinates(n: int = 100):
@@ -115,33 +115,47 @@ def do_intersect(p1: Point, q1: Point, p2: Point, q2: Point) -> bool:
 
 @lru_cache(maxsize=None)
 def is_intersecting(*args) -> bool:
+    # print("is_intersecting:", args, end='')
+
     s = set(args)
-    if len(s) != 4:
-        return False
-    else:
-        return do_intersect(*args)
+
+    retVal = False
+    if len(s) == 4:
+        retVal = do_intersect(*args)
+
+    # print(" -->", "YES" if retVal else "NO")
+
+    return retVal
 
 
 # This is needed otherwise our fence might get all mangled up!
 def add_point_to_fence(fence, P):
-    A = fence
+    if len(fence) < 3:
+        fence.append(P)
+        return fence
 
+    a = 1
     # Look where to place it in final
     # This position is i+1 for the first i verifying that neither [Ai-P] nor [Ai+1-P] intersects any other segments [Ak-Ak+1].
-    for idx in range(len(A) - 1):
-        Ai = A[idx]
-        Ai1 = A[idx + 1]
-        # Check 1: intersection Ai-P with any other segments?
-        t1 = any((is_intersecting(Ai, P, A[ix], A[ix + 1]) for ix in range(idx + 1, len(A) - 1, 1)))
-        t2 = any((is_intersecting(Ai1, P, A[ix], A[ix + 1]) for ix in range(idx + 2, len(A) - 1, 1)))
-        if not t1 and not t2:
-            # Add to position i+1
-            A.insert(idx + 1, P)
+    for idx in range(1, len(fence)):
+        # print(" --> Starting with index", idx)
+        # Create a copy
+        tmp = fence.copy()
+        tmp.insert(idx, P)
+        tmp.append(tmp[0])  # Add the first element in there again to have it completely check every segment
+
+        t1 = list(is_intersecting(tmp[ix], tmp[ix + 1], tmp[x], tmp[x + 1]) for x in range(len(tmp) - 1) for ix in range(0, len(tmp) - 1))
+
+#        if not any(is_intersecting(fence[idx], P, tmp[x], tmp[x + 1]) for x in range(len(tmp) - 1)):
+        if not any(t1):
+            # Do the change for real!
+            fence.insert(idx, P)
             break
     else:
-        A.append(P)
+        fence.append(P)
 
-    return A
+    # print("-------------------------------")
+    return fence
 
 
 def enlarge_fence(fence, reverse_distances, coords, center):
@@ -167,14 +181,20 @@ def enlarge_fence(fence, reverse_distances, coords, center):
         if len(reverse_distances[d]) == 0:
             del reverse_distances[d]
 
-    draw_result(coords, fence)
+    draw_result(coords, fence, center)
 
 
-def draw_result(coords, fence, filename=None):
+def draw_result(coords, fence, center, filename=None):
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
 
     fig, ax = plt.subplots()
+    # Draw the center
+    ax.scatter(
+        [center.x],
+        [center.y],
+        color='red'
+    )
 
     # Draw the coordinates
     ax.scatter(
@@ -235,7 +255,7 @@ def solve_issue(coords):
     while len(coords):
         enlarge_fence(fence, reverse_distances, coords, center)
 
-    return fence
+    return fence, center
 
 
 if __name__ == "__main__":
@@ -243,5 +263,5 @@ if __name__ == "__main__":
         pickle.dump(random.getstate(), fp)
     
     coords = generate_coordinates()
-    fence = solve_issue(coords.copy())
-    draw_result(coords, fence, "final_result.png")
+    fence, center = solve_issue(coords.copy())
+    draw_result(coords, fence, center, "final_result.png")
