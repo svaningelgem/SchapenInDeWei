@@ -39,6 +39,9 @@ def avg(a, b):
 
 
 def is_in_area(pt, fence):
+    if pt in fence:
+        return True
+
     import matplotlib.path as mplPath
     bbPath = mplPath.Path(fence)
     return bbPath.contains_point(pt)
@@ -181,7 +184,7 @@ def enlarge_fence(fence, reverse_distances, coords, center):
         if len(reverse_distances[d]) == 0:
             del reverse_distances[d]
 
-    draw_result(coords, fence, center)
+    # draw_result(coords, fence, center)
 
 
 def draw_result(coords, fence, center, filename=None):
@@ -232,6 +235,32 @@ def draw_result(coords, fence, center, filename=None):
     plt.close()
 
 
+# Try to remove coordinates and see if the result is still ok
+def optimize_fence(fence, coords, center):
+    while len(fence) > 3:
+        # draw_result(coords, fence, center)
+
+        start_len = len(fence)
+        idx = 0
+        while idx < len(fence):
+            test = fence.copy()
+            del test[idx]
+
+            # draw_result(coords, test, center)
+
+            tmp = list(is_in_area(x, test) for x in coords)
+            if all(tmp):
+                del fence[idx]
+            else:
+                idx += 1
+
+        stop_len = len(fence)
+        if stop_len == start_len:
+            break
+
+    # draw_result(coords, fence, center)
+
+
 def solve_issue(coords):
     # Find min X/Y --> This is a possibility, but unlikely to be the smallest!
     min_x = min(map(lambda pt: pt.x, coords))
@@ -264,4 +293,6 @@ if __name__ == "__main__":
     
     coords = generate_coordinates()
     fence, center = solve_issue(coords.copy())
+    draw_result(coords, fence, center, "before_optimization.png")
+    optimize_fence(fence, coords, center)
     draw_result(coords, fence, center, "final_result.png")
