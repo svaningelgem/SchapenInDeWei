@@ -1,16 +1,15 @@
-import random
-from collections import namedtuple, defaultdict
-from math import sqrt
-from functools import lru_cache
 import os
 import pickle
-
+import random
+from collections import defaultdict, namedtuple
+from functools import cache
+from math import sqrt
 
 if os.path.exists("use_seed.dat"):
     with open("use_seed.dat", "rb") as fp:
         random.setstate(pickle.load(fp))
 
-Point = namedtuple("Point", ('x', 'y'))
+Point = namedtuple("Point", ("x", "y"))
 picture_counter = 0
 
 # ################ CONFIG
@@ -22,18 +21,15 @@ max_y = 100
 
 
 def generate_coordinates(n: int = 100):
-    return list((
-        Point(x=random.randint(min_x, max_x), y=random.randint(min_y, max_y))
-        for _ in range(n)
-    ))
+    return [Point(x=random.randint(min_x, max_x), y=random.randint(min_y, max_y)) for _ in range(n)]
 
 
-@lru_cache(maxsize=None)
+@cache
 def distance(pt1, pt2):
     return sqrt((pt2.x - pt1.x) ** 2 + (pt2.y - pt1.y) ** 2)
 
 
-@lru_cache(maxsize=None)
+@cache
 def avg(a, b):
     return (a + b) / 2.0
 
@@ -43,6 +39,7 @@ def is_in_area(pt, fence):
         return True
 
     import matplotlib.path as mplPath
+
     bbPath = mplPath.Path(fence)
     return bbPath.contains_point(pt)
 
@@ -61,9 +58,9 @@ def add_largest_distance_to_fence(fence, reverse_distances):
 
     # Sort the fence:
     add_point_to_fence(fence, new_point_in_fence)
-    
 
-@lru_cache(maxsize=None)
+
+@cache
 def orientation(p: Point, q: Point, r: Point) -> int:
     val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y)
 
@@ -76,16 +73,13 @@ def orientation(p: Point, q: Point, r: Point) -> int:
 
 
 # Given three colinear points p, q, r, the function checks if point q lies on line segment 'pr'
-@lru_cache(maxsize=None)
+@cache
 def on_segment(p: Point, q: Point, r: Point) -> bool:
-    return q.x <= max(p.x, r.x) and \
-        q.x >= min(p.x, r.x) and \
-        q.y <= max(p.y, r.y) and \
-        q.y >= min(p.y, r.y)
+    return q.x <= max(p.x, r.x) and q.x >= min(p.x, r.x) and q.y <= max(p.y, r.y) and q.y >= min(p.y, r.y)
 
 
 # Does line segment 'p1q1' and 'p2q2' intersect?
-@lru_cache(maxsize=None)
+@cache
 def do_intersect(p1: Point, q1: Point, p2: Point, q2: Point) -> bool:
     o1 = orientation(p1, q1, p2)
     o2 = orientation(p1, q1, q2)
@@ -116,7 +110,7 @@ def do_intersect(p1: Point, q1: Point, p2: Point, q2: Point) -> bool:
     return False  # Doesn't fall in any of the above cases
 
 
-@lru_cache(maxsize=None)
+@cache
 def is_intersecting(*args) -> bool:
     # print("is_intersecting:", args, end='')
 
@@ -137,7 +131,6 @@ def add_point_to_fence(fence, P):
         fence.append(P)
         return fence
 
-    a = 1
     # Look where to place it in final
     # This position is i+1 for the first i verifying that neither [Ai-P] nor [Ai+1-P] intersects any other segments [Ak-Ak+1].
     for idx in range(1, len(fence)):
@@ -147,9 +140,13 @@ def add_point_to_fence(fence, P):
         tmp.insert(idx, P)
         tmp.append(tmp[0])  # Add the first element in there again to have it completely check every segment
 
-        t1 = list(is_intersecting(tmp[ix], tmp[ix + 1], tmp[x], tmp[x + 1]) for x in range(len(tmp) - 1) for ix in range(0, len(tmp) - 1))
+        t1 = [
+            is_intersecting(tmp[ix], tmp[ix + 1], tmp[x], tmp[x + 1])
+            for x in range(len(tmp) - 1)
+            for ix in range(len(tmp) - 1)
+        ]
 
-#        if not any(is_intersecting(fence[idx], P, tmp[x], tmp[x + 1]) for x in range(len(tmp) - 1)):
+        #        if not any(is_intersecting(fence[idx], P, tmp[x], tmp[x + 1]) for x in range(len(tmp) - 1)):
         if not any(t1):
             # Do the change for real!
             fence.insert(idx, P)
@@ -166,7 +163,7 @@ def enlarge_fence(fence, reverse_distances, coords, center):
 
     # draw_result(coords, fence)
     # Now remove all coordinates that are WITHIN the fence
-    to_remove = list()
+    to_remove = []
     for pt in coords:
         if pt in fence or is_in_area(pt, fence):
             to_remove.append(pt)  # Can't modify the list during the loop
@@ -191,33 +188,17 @@ def draw_result(coords, fence, center, filename=None):
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
 
-    fig, ax = plt.subplots()
+    _fig, ax = plt.subplots()
     # Draw the center
-    ax.scatter(
-        [center.x],
-        [center.y],
-        color='red'
-    )
+    ax.scatter([center.x], [center.y], color="red")
 
     # Draw the coordinates
-    ax.scatter(
-        list(map(lambda pt: pt.x, coords)),
-        list(map(lambda pt: pt.y, coords)),
-        color='blue'
-    )
+    ax.scatter([pt.x for pt in coords], [pt.y for pt in coords], color="blue")
     # Draw the fence
-    line = Line2D(
-        list(map(lambda pt: pt.x, fence)),
-        list(map(lambda pt: pt.y, fence)),
-        color='green'
-    )
+    line = Line2D([pt.x for pt in fence], [pt.y for pt in fence], color="green")
     ax.add_line(line)
     # Draw the closing of the fence
-    line = Line2D(
-        [fence[0].x, fence[-1].x],
-        [fence[0].y, fence[-1].y],
-        color='green'
-    )
+    line = Line2D([fence[0].x, fence[-1].x], [fence[0].y, fence[-1].y], color="green")
     ax.add_line(line)
     # plt.show()
 
@@ -248,7 +229,7 @@ def optimize_fence(fence, coords, center):
 
             # draw_result(coords, test, center)
 
-            tmp = list(is_in_area(x, test) for x in coords)
+            tmp = [is_in_area(x, test) for x in coords]
             if all(tmp):
                 del fence[idx]
             else:
@@ -263,10 +244,10 @@ def optimize_fence(fence, coords, center):
 
 def solve_issue(coords):
     # Find min X/Y --> This is a possibility, but unlikely to be the smallest!
-    min_x = min(map(lambda pt: pt.x, coords))
-    min_y = min(map(lambda pt: pt.y, coords))
-    max_x = max(map(lambda pt: pt.x, coords))
-    max_y = max(map(lambda pt: pt.y, coords))
+    min_x = min(pt.x for pt in coords)
+    min_y = min(pt.y for pt in coords)
+    max_x = max(pt.x for pt in coords)
+    max_y = max(pt.y for pt in coords)
 
     # Now... Can we eliminate stuff??
     # -> Find the center point.
@@ -277,7 +258,7 @@ def solve_issue(coords):
     for pt, dist in ((pt, distance(pt, center)) for pt in coords):
         reverse_distances[dist].append(pt)
 
-    fence = list()
+    fence = []
     while len(fence) < 2:  # the enlarge_fence function will add yet another point there!
         add_largest_distance_to_fence(fence, reverse_distances)
 
@@ -290,7 +271,7 @@ def solve_issue(coords):
 if __name__ == "__main__":
     with open("last_seed.dat", "wb") as fp:
         pickle.dump(random.getstate(), fp)
-    
+
     coords = generate_coordinates()
     fence, center = solve_issue(coords.copy())
     draw_result(coords, fence, center, "before_optimization.png")
