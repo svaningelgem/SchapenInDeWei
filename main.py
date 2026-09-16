@@ -21,7 +21,10 @@ max_y = 100
 
 
 def generate_coordinates(n: int = 100):
-    return [Point(x=random.randint(min_x, max_x), y=random.randint(min_y, max_y)) for _ in range(n)]
+    return [
+        Point(x=random.randint(min_x, max_x), y=random.randint(min_y, max_y))
+        for _ in range(n)
+    ]
 
 
 @cache
@@ -75,7 +78,12 @@ def orientation(p: Point, q: Point, r: Point) -> int:
 # Given three colinear points p, q, r, the function checks if point q lies on line segment 'pr'
 @cache
 def on_segment(p: Point, q: Point, r: Point) -> bool:
-    return q.x <= max(p.x, r.x) and q.x >= min(p.x, r.x) and q.y <= max(p.y, r.y) and q.y >= min(p.y, r.y)
+    return (
+        q.x <= max(p.x, r.x)
+        and q.x >= min(p.x, r.x)
+        and q.y <= max(p.y, r.y)
+        and q.y >= min(p.y, r.y)
+    )
 
 
 # Does line segment 'p1q1' and 'p2q2' intersect?
@@ -138,7 +146,9 @@ def add_point_to_fence(fence, P):
         # Create a copy
         tmp = fence.copy()
         tmp.insert(idx, P)
-        tmp.append(tmp[0])  # Add the first element in there again to have it completely check every segment
+        tmp.append(
+            tmp[0]
+        )  # Add the first element in there again to have it completely check every segment
 
         t1 = [
             is_intersecting(tmp[ix], tmp[ix + 1], tmp[x], tmp[x + 1])
@@ -211,7 +221,9 @@ def draw_result(coords, fence, center, filename=None):
     else:
         global picture_counter
         picture_counter += 1
-        plt.savefig(os.path.dirname(__file__) + "/step_" + str(picture_counter) + ".png")
+        plt.savefig(
+            os.path.dirname(__file__) + "/step_" + str(picture_counter) + ".png"
+        )
 
     plt.close()
 
@@ -259,7 +271,9 @@ def solve_issue(coords):
         reverse_distances[dist].append(pt)
 
     fence = []
-    while len(fence) < 2:  # the enlarge_fence function will add yet another point there!
+    while (
+        len(fence) < 2
+    ):  # the enlarge_fence function will add yet another point there!
         add_largest_distance_to_fence(fence, reverse_distances)
 
     while len(coords):
